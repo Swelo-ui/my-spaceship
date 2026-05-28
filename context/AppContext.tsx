@@ -7,7 +7,8 @@
 
 
 import React, { createContext, useContext, RefObject, MutableRefObject } from 'react';
-import { Slider, AiStage, SliderSuggestion, TerraformConfig, TerraformTarget, ControlConfig, SoundConfig, Modulation, CameraData, ViewMode, ShipConfig, ShipModulation } from '../types';
+import { Slider, AiStage, SliderSuggestion, TerraformConfig, TerraformTarget, ControlConfig, SoundConfig, Modulation, CameraData, ViewMode, ShipConfig, ShipModulation, CombatState } from '../types';
+import { CombatSystemAPI } from '../hooks/useCombatSystem';
 
 // Define the shape of the context's value
 export interface AppContextType {
@@ -26,7 +27,7 @@ export interface AppContextType {
   handleSliderConfigChange: (variableName: string, key: 'min' | 'max' | 'step', value: number) => void;
   handleResetSliders: () => void;
   handleRemoveSlider: (variableName: string) => void;
-  
+
   // Settings State
   canvasSize: string;
   setCanvasSize: (size: string) => void;
@@ -58,6 +59,7 @@ export interface AppContextType {
   currentSessionId: string;
   cameraControlsEnabled: boolean;
   pressedKeys: Set<string>;
+  keysPressed: React.MutableRefObject<Set<string>>;
   controlConfig: ControlConfig;
   handleControlConfigChange: (key: keyof ControlConfig, value: boolean | number) => void;
   isMoving: boolean;
@@ -101,7 +103,7 @@ export interface AppContextType {
   handleUndo: () => void;
   historyIndex: number;
   handleRedo: () => void;
-  history: any[]; 
+  history: any[];
   fileInputRef: RefObject<HTMLInputElement>;
   handleFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   setIsNewSessionModalOpen: (open: boolean) => void;
@@ -153,6 +155,9 @@ export interface AppContextType {
   addShipModulation: (mod: ShipModulation) => void;
   updateShipModulation: (id: string, newConfig: Partial<ShipModulation>) => void;
   removeShipModulation: (id: string) => void;
+
+  // Combat System
+  combatAPI: CombatSystemAPI | null;
 }
 
 

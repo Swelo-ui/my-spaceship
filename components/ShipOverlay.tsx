@@ -26,6 +26,7 @@ out vec4 outColor;
 uniform float u_time;
 uniform vec2 u_resolution;
 uniform mat4 u_shipRot;
+uniform mat4 u_shipRotInv;
 uniform float u_thrust;
 uniform float u_brake;
 uniform float u_yaw_velocity;
@@ -56,9 +57,9 @@ uniform float u_chaseDistance;
 uniform float u_chaseVerticalOffset;
 uniform float u_translucency;
 
-#define MAX_STEPS 64
+#define MAX_STEPS 48
 #define MAX_DIST 15.0
-#define SURF_DIST 0.001
+#define SURF_DIST 0.002
 
 mat2 rot(float a) { float s=sin(a), c=cos(a); return mat2(c, -s, s, c); }
 
@@ -111,8 +112,8 @@ float sdFractalShip(vec3 p) {
 
 // Main SDF mapping the whole ship
 float map(vec3 p) {
-    // Apply ship rotation (pitch/yaw/roll)
-    p = (inverse(u_shipRot) * vec4(p, 1.0)).xyz;
+    // Apply ship rotation using precomputed inverse (avoids per-pixel inverse() call)
+    p = (u_shipRotInv * vec4(p, 1.0)).xyz;
 
     // Main Body
     float dBody = sdFractalShip(p);
@@ -174,8 +175,8 @@ void main() {
         float rim = pow(1.0 - max(dot(-rd, n), 0.0), 4.0);
         col += vec3(0.1, 0.6, 1.0) * rim * 0.8;
 
-        // Calculate local coordinates for emissive mapping
-        vec3 localP = (inverse(u_shipRot) * vec4(p, 1.0)).xyz;
+        // Calculate local coordinates for emissive mapping (use precomputed inverse)
+        vec3 localP = (u_shipRotInv * vec4(p, 1.0)).xyz;
         
         // --- Engine Glow ---
         // Wider mask to accommodate the ignition animation starting point
@@ -243,24 +244,31 @@ void main() {
 `;
 
 const mat4 = {
-    identity: (out: Float32Array) => { out.fill(0); out[0]=1; out[5]=1; out[10]=1; out[15]=1; },
+    identity: (out: Float32Array) => { out.fill(0); out[0] = 1; out[5] = 1; out[10] = 1; out[15] = 1; },
+    // For a pure rotation matrix, transpose = inverse (much cheaper than full inverse)
+    transpose: (src: Float32Array, out: Float32Array) => {
+        out[0] = src[0]; out[1] = src[4]; out[2] = src[8]; out[3] = src[12];
+        out[4] = src[1]; out[5] = src[5]; out[6] = src[9]; out[7] = src[13];
+        out[8] = src[2]; out[9] = src[6]; out[10] = src[10]; out[11] = src[14];
+        out[12] = src[3]; out[13] = src[7]; out[14] = src[11]; out[15] = src[15];
+    },
     rotateX: (out: Float32Array, a: Float32Array, rad: number) => {
-        let s=Math.sin(rad), c=Math.cos(rad), a10=a[4],a11=a[5],a12=a[6],a13=a[7], a20=a[8],a21=a[9],a22=a[10],a23=a[11];
+        let s = Math.sin(rad), c = Math.cos(rad), a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7], a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
         out.set(a);
-        out[4]=a10*c+a20*s; out[5]=a11*c+a21*s; out[6]=a12*c+a22*s; out[7]=a13*c+a23*s;
-        out[8]=a20*c-a10*s; out[9]=a21*c-a11*s; out[10]=a22*c-a12*s; out[11]=a23*c-a13*s;
+        out[4] = a10 * c + a20 * s; out[5] = a11 * c + a21 * s; out[6] = a12 * c + a22 * s; out[7] = a13 * c + a23 * s;
+        out[8] = a20 * c - a10 * s; out[9] = a21 * c - a11 * s; out[10] = a22 * c - a12 * s; out[11] = a23 * c - a13 * s;
     },
     rotateY: (out: Float32Array, a: Float32Array, rad: number) => {
-        let s=Math.sin(rad), c=Math.cos(rad), a00=a[0],a01=a[1],a02=a[2],a03=a[3], a20=a[8],a21=a[9],a22=a[10],a23=a[11];
+        let s = Math.sin(rad), c = Math.cos(rad), a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3], a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
         out.set(a);
-        out[0]=a00*c-a20*s; out[1]=a01*c-a21*s; out[2]=a02*c-a22*s; out[3]=a03*c-a23*s;
-        out[8]=a00*s+a20*c; out[9]=a01*s+a21*c; out[10]=a02*s+a22*c; out[11]=a03*s+a23*c;
+        out[0] = a00 * c - a20 * s; out[1] = a01 * c - a21 * s; out[2] = a02 * c - a22 * s; out[3] = a03 * c - a23 * s;
+        out[8] = a00 * s + a20 * c; out[9] = a01 * s + a21 * c; out[10] = a02 * s + a22 * c; out[11] = a03 * s + a23 * c;
     },
     rotateZ: (out: Float32Array, a: Float32Array, rad: number) => {
-        let s=Math.sin(rad), c=Math.cos(rad), a00=a[0],a01=a[1],a02=a[2],a03=a[3], a10=a[4],a11=a[5],a12=a[6],a13=a[7];
+        let s = Math.sin(rad), c = Math.cos(rad), a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3], a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
         out.set(a);
-        out[0]=a00*c+a10*s; out[1]=a01*c+a11*s; out[2]=a02*c+a13*s; out[3]=a03*c+a13*s;
-        out[4]=a10*c-a00*s; out[5]=a11*c-a01*s; out[6]=a12*c-a02*s; out[7]=a13*c-a03*s;
+        out[0] = a00 * c + a10 * s; out[1] = a01 * c + a11 * s; out[2] = a02 * c + a13 * s; out[3] = a03 * c + a13 * s;
+        out[4] = a10 * c - a00 * s; out[5] = a11 * c - a01 * s; out[6] = a12 * c - a02 * s; out[7] = a13 * c - a03 * s;
     },
 };
 
@@ -271,10 +279,10 @@ export const ShipOverlay: React.FC = () => {
 
     const shipConfigRef = useRef(shipConfig);
     useEffect(() => { shipConfigRef.current = shipConfig; }, [shipConfig]);
-    
+
     const pressedKeysRef = useRef(pressedKeys);
     useEffect(() => { pressedKeysRef.current = pressedKeys; }, [pressedKeys]);
-    
+
     const controlConfigRef = useRef(controlConfig);
     useEffect(() => { controlConfigRef.current = controlConfig; }, [controlConfig]);
 
@@ -306,6 +314,7 @@ export const ShipOverlay: React.FC = () => {
             uRes: gl.getUniformLocation(p, 'u_resolution'),
             uTime: gl.getUniformLocation(p, 'u_time'),
             uShipRot: gl.getUniformLocation(p, 'u_shipRot'),
+            uShipRotInv: gl.getUniformLocation(p, 'u_shipRotInv'),
             uThrust: gl.getUniformLocation(p, 'u_thrust'),
             uThrustIgnitionTime: gl.getUniformLocation(p, 'u_thrust_ignition_time'),
             uBrake: gl.getUniformLocation(p, 'u_brake'),
@@ -323,7 +332,7 @@ export const ShipOverlay: React.FC = () => {
             uAsymmetryX: gl.getUniformLocation(p, 'u_asymmetryX'),
             uAsymmetryY: gl.getUniformLocation(p, 'u_asymmetryY'),
             uAsymmetryZ: gl.getUniformLocation(p, 'u_asymmetryZ'),
-            
+
             // New Bias Uniforms
             uTwistAsymX: gl.getUniformLocation(p, 'u_twistAsymX'),
             uScaleAsymX: gl.getUniformLocation(p, 'u_scaleAsymX'),
@@ -346,6 +355,7 @@ export const ShipOverlay: React.FC = () => {
         gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
 
         const rotMat = new Float32Array(16);
+        const rotMatInv = new Float32Array(16);
         let lastTime = 0, animId = 0;
 
         // State for smooth thrust/brake animation, now with ignition tracking
@@ -360,8 +370,8 @@ export const ShipOverlay: React.FC = () => {
             const dt = Math.min((t - lastTime) / 1000, 0.1);
             const currentTimeSec = t * 0.001;
             lastTime = t;
-            
-            const dpr = window.devicePixelRatio || 1;
+
+            const dpr = Math.min(window.devicePixelRatio || 1, 1.0); // Cap DPR at 1 for performance
             const w = canvas.clientWidth * dpr, h = canvas.clientHeight * dpr;
             if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; gl.viewport(0, 0, w, h); }
             gl.clearColor(0, 0, 0, 0);
@@ -369,21 +379,21 @@ export const ShipOverlay: React.FC = () => {
 
             const isThrustingNow = (pressedKeysRef.current.has('s') && !controlConfigRef.current.invertForward) || (pressedKeysRef.current.has('w') && controlConfigRef.current.invertForward);
             const isBraking = (pressedKeysRef.current.has('w') && !controlConfigRef.current.invertForward) || (pressedKeysRef.current.has('s') && controlConfigRef.current.invertForward);
-            
+
             // Detect ignition start
             if (isThrustingNow && !thrustState.isThrusting) {
                 thrustState.ignitionTime = currentTimeSec;
             }
             thrustState.isThrusting = isThrustingNow;
-            
+
             // LERP for smooth animation
             const LERP_SPEED = 8.0;
             thrustState.level += ((isThrustingNow ? 1.0 : 0.0) - thrustState.level) * LERP_SPEED * dt;
             brakeLevel.current += ((isBraking ? 1.0 : 0.0) - brakeLevel.current) * LERP_SPEED * dt;
-            
+
             // Use actual physics angular velocity for smoother, heavier animation
             // Negate yaw velocity because camera yaw is inverted relative to ship yaw visually
-            const tYaw = -cameraAngularVelocityRef.current[1] * 1.2; 
+            const tYaw = -cameraAngularVelocityRef.current[1] * 1.2;
             const tPitch_velocity = cameraAngularVelocityRef.current[0];
             // Invert pitch velocity to match user preference (UP looks UP)
             const tPitch = -tPitch_velocity * 1.0 + (shipConfigRef.current.pitchOffset ?? 0.0);
@@ -399,16 +409,20 @@ export const ShipOverlay: React.FC = () => {
             mat4.rotateX(rotMat, rotMat, shipState.current.pitch);
             mat4.rotateZ(rotMat, rotMat, shipState.current.roll);
 
+            // Compute inverse on CPU once — avoids 2x per-pixel inverse() in shader
+            mat4.transpose(rotMat, rotMatInv); // For pure rotation matrix, transpose = inverse
+
             gl.useProgram(p);
             gl.uniform2f(locs.uRes, w, h);
             gl.uniform1f(locs.uTime, currentTimeSec);
             gl.uniformMatrix4fv(locs.uShipRot, false, rotMat);
+            gl.uniformMatrix4fv(locs.uShipRotInv, false, rotMatInv);
             gl.uniform1f(locs.uThrust, thrustState.level);
             gl.uniform1f(locs.uThrustIgnitionTime, thrustState.ignitionTime);
             gl.uniform1f(locs.uBrake, brakeLevel.current);
             gl.uniform1f(locs.uYawVelocity, tYaw);
             gl.uniform1f(locs.uPitchVelocity, tPitch_velocity);
-            
+
             // Update DNA uniforms from EFFECTIVE config (includes modulations)
             const ec = effectiveShipConfigRef.current;
             gl.uniform1f(locs.uComplexity, ec.complexity);
@@ -440,7 +454,7 @@ export const ShipOverlay: React.FC = () => {
             animId = requestAnimationFrame(render);
         };
         render(performance.now());
-        return () => { cancelAnimationFrame(animId); gl.deleteProgram(p); };
+        return () => { cancelAnimationFrame(animId); gl.deleteProgram(p); gl.deleteVertexArray(vao); gl.deleteBuffer(vbo); };
     }, [viewMode]);
 
     if (viewMode !== 'chase') return null;

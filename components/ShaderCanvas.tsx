@@ -28,33 +28,33 @@ const VERTEX_SHADER_SRC = `#version 300 es
 const compileShader = (gl: WebGL2RenderingContext, type: number, source: string): WebGLShader | string => {
   const shader = gl.createShader(type);
   if (!shader) return 'Could not create shader';
-  
+
   gl.shaderSource(shader, source);
   gl.compileShader(shader);
-  
+
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
     const error = gl.getShaderInfoLog(shader);
     gl.deleteShader(shader);
     return `Shader compilation error:\n${error}`;
   }
-  
+
   return shader;
 };
 
 const createProgram = (gl: WebGL2RenderingContext, vs: WebGLShader, fs: WebGLShader): WebGLProgram | string => {
   const program = gl.createProgram();
   if (!program) return 'Could not create program';
-  
+
   gl.attachShader(program, vs);
   gl.attachShader(program, fs);
   gl.linkProgram(program);
-  
+
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
     const error = gl.getProgramInfoLog(program);
     gl.deleteProgram(program);
     return `Program linking error:\n${error}`;
   }
-  
+
   return program;
 };
 
@@ -62,13 +62,13 @@ const createProgram = (gl: WebGL2RenderingContext, vs: WebGLShader, fs: WebGLSha
 export const ShaderCanvas: React.FC<ShaderCanvasProps> = React.memo(({ fragmentSrc, onError, uniforms, cameraRef, isHdEnabled, isFpsEnabled, isPlaying, shouldReduceQuality }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fpsRef = useRef<HTMLDivElement>(null);
-  
+
   const uniformsRef = useRef(uniforms);
   // Only update if reference changes to avoid unnecessary writes in render loop if it was already current
   if (uniformsRef.current !== uniforms) {
-      uniformsRef.current = uniforms;
+    uniformsRef.current = uniforms;
   }
-  
+
   const isPlayingRef = useRef(isPlaying);
   isPlayingRef.current = isPlaying;
   const isHdEnabledRef = useRef(isHdEnabled);
@@ -84,15 +84,15 @@ export const ShaderCanvas: React.FC<ShaderCanvasProps> = React.memo(({ fragmentS
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
-    const gl = canvas.getContext('webgl2', { 
-        preserveDrawingBuffer: false,
-        alpha: false,
-        depth: false,
-        stencil: false,
-        antialias: false,
-        powerPreference: 'high-performance',
-        desynchronized: true
+
+    const gl = canvas.getContext('webgl2', {
+      preserveDrawingBuffer: false,
+      alpha: false,
+      depth: false,
+      stencil: false,
+      antialias: false,
+      powerPreference: 'high-performance',
+      desynchronized: true
     });
     if (!gl) {
       onError('WebGL 2 is not supported on this browser.');
@@ -100,9 +100,9 @@ export const ShaderCanvas: React.FC<ShaderCanvasProps> = React.memo(({ fragmentS
     }
 
     const generateUniformDeclarations = (uniformsToDeclare: { [key: string]: number }): string => {
-        return Object.entries(uniformsToDeclare).map(([name, value]) => {
-             return `uniform float ${name};`;
-        }).join('\n');
+      return Object.entries(uniformsToDeclare).map(([name, value]) => {
+        return `uniform float ${name};`;
+      }).join('\n');
     };
 
     const fragmentTemplate = `#version 300 es
@@ -150,23 +150,23 @@ export const ShaderCanvas: React.FC<ShaderCanvasProps> = React.memo(({ fragmentS
     const fsResult = compileShader(gl, gl.FRAGMENT_SHADER, fragmentTemplate);
     if (typeof fsResult === 'string') { gl.deleteShader(vs); onError(fsResult); return; }
     const fs = fsResult;
-    
+
     const programResult = createProgram(gl, vs, fs);
     gl.deleteShader(vs);
     gl.deleteShader(fs);
     if (typeof programResult === 'string') { onError(programResult); return; }
     const program = programResult;
-    
+
     const positionAttributeLocation = gl.getAttribLocation(program, 'a_position');
     const resolutionUniformLocation = gl.getUniformLocation(program, 'u_resolution');
     const timeUniformLocation = gl.getUniformLocation(program, 'u_time');
     const cameraPosLocation = gl.getUniformLocation(program, 'u_cameraPosition');
     const cameraRotLocation = gl.getUniformLocation(program, 'u_cameraRotation');
     const cameraRollLocation = gl.getUniformLocation(program, 'u_cameraRoll');
-    
+
     const uniformLocations: { [key: string]: WebGLUniformLocation | null } = {};
     for (const uniformName of Object.keys(uniformsRef.current)) {
-        uniformLocations[uniformName] = gl.getUniformLocation(program, uniformName);
+      uniformLocations[uniformName] = gl.getUniformLocation(program, uniformName);
     }
 
     uniformCacheRef.current = {};
@@ -197,9 +197,11 @@ export const ShaderCanvas: React.FC<ShaderCanvasProps> = React.memo(({ fragmentS
         accumulatedTime += deltaTime;
       }
 
-      let scale = isHdEnabledRef.current ? 1.0 : 0.5;
+      let scale = isHdEnabledRef.current ? 1.0 : 0.35;
       if (isHdEnabledRef.current && shouldReduceQualityRef.current) {
-          scale = 0.65; 
+        scale = 0.5; // HD + moving = medium quality
+      } else if (!isHdEnabledRef.current && shouldReduceQualityRef.current) {
+        scale = 0.25; // Low + moving = very low quality for max smoothness
       }
 
       const displayWidth = Math.floor(canvas.clientWidth * scale);
@@ -216,9 +218,9 @@ export const ShaderCanvas: React.FC<ShaderCanvasProps> = React.memo(({ fragmentS
 
       // OPTIMIZATION: Directly read camera state from the mutable ref
       if (cameraRef && cameraRef.current) {
-          gl.uniform3fv(cameraPosLocation, cameraRef.current.position);
-          gl.uniform2fv(cameraRotLocation, cameraRef.current.rotation);
-          gl.uniform1f(cameraRollLocation, cameraRef.current.roll);
+        gl.uniform3fv(cameraPosLocation, cameraRef.current.position);
+        gl.uniform2fv(cameraRotLocation, cameraRef.current.rotation);
+        gl.uniform1f(cameraRollLocation, cameraRef.current.roll);
       }
 
       // Slider uniforms
@@ -226,28 +228,28 @@ export const ShaderCanvas: React.FC<ShaderCanvasProps> = React.memo(({ fragmentS
       const cache = uniformCacheRef.current;
 
       for (const name in currentUniforms) {
-          const value = currentUniforms[name];
-          const location = uniformLocations[name];
+        const value = currentUniforms[name];
+        const location = uniformLocations[name];
 
-          if (location !== null) {
-               if (cache[name] !== value) {
-                   gl.uniform1f(location, value);
-                   cache[name] = value;
-               }
+        if (location !== null) {
+          if (cache[name] !== value) {
+            gl.uniform1f(location, value);
+            cache[name] = value;
           }
+        }
       }
 
       gl.drawArrays(gl.TRIANGLES, 0, 6);
-      
+
       if (isFpsEnabledRef.current) {
         frameCount++;
         if (timestamp - lastFpsUpdate >= 500) {
-            const fps = Math.round((frameCount * 1000) / (timestamp - lastFpsUpdate));
-            if (fpsRef.current) {
-                fpsRef.current.textContent = `${fps} FPS`;
-            }
-            lastFpsUpdate = timestamp;
-            frameCount = 0;
+          const fps = Math.round((frameCount * 1000) / (timestamp - lastFpsUpdate));
+          if (fpsRef.current) {
+            fpsRef.current.textContent = `${fps} FPS`;
+          }
+          lastFpsUpdate = timestamp;
+          frameCount = 0;
         }
       }
 
@@ -265,21 +267,21 @@ export const ShaderCanvas: React.FC<ShaderCanvasProps> = React.memo(({ fragmentS
 
   return (
     <>
-        <canvas 
-            ref={canvasRef} 
-            className="absolute top-0 left-0 w-full h-full"
-            style={{
-                imageRendering: isHdEnabled && shouldReduceQuality ? 'pixelated' : 'auto' 
-            }}
-        />
-        {isFpsEnabled && (
-            <div 
-                ref={fpsRef}
-                className="fixed bottom-2 right-2 z-30 pointer-events-none bg-black/60 backdrop-blur-sm text-green-400 font-mono text-xs px-2 py-1 rounded border border-green-900/50 shadow-sm"
-            >
-                -- FPS
-            </div>
-        )}
+      <canvas
+        ref={canvasRef}
+        className="absolute top-0 left-0 w-full h-full"
+        style={{
+          imageRendering: isHdEnabled && shouldReduceQuality ? 'pixelated' : 'auto'
+        }}
+      />
+      {isFpsEnabled && (
+        <div
+          ref={fpsRef}
+          className="fixed bottom-2 right-2 z-30 pointer-events-none bg-black/60 backdrop-blur-sm text-green-400 font-mono text-xs px-2 py-1 rounded border border-green-900/50 shadow-sm"
+        >
+          -- FPS
+        </div>
+      )}
     </>
   );
 });

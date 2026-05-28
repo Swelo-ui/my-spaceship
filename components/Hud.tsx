@@ -19,12 +19,18 @@ import { useAppContext } from '../context/AppContext';
 export const Hud: React.FC = () => {
     const { cameraRef, renderCameraRef, cameraVelocityRef, isHudEnabled, collisionState, viewModeTransition } = useAppContext();
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    
-    // Use ref to access latest collision state in render loop without re-triggering effect
+
+    // Use refs to access latest values in render loop without re-triggering effect
     const collisionStateRef = useRef(collisionState);
     useEffect(() => {
         collisionStateRef.current = collisionState;
     }, [collisionState]);
+
+    // PERF FIX: viewModeTransition was in useEffect deps, causing RAF restart every frame during transition
+    const viewModeTransitionRef = useRef(viewModeTransition);
+    useEffect(() => {
+        viewModeTransitionRef.current = viewModeTransition;
+    }, [viewModeTransition]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -33,13 +39,18 @@ export const Hud: React.FC = () => {
         const ctx = canvas.getContext('2d', { alpha: true });
         if (!ctx) return;
 
+        // Set font once — not every frame
+        ctx.font = 'bold 12px monospace';
+
         let animationFrameId: number;
-        
+
         const render = () => {
             // Handle resize
             if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
                 canvas.width = window.innerWidth;
                 canvas.height = window.innerHeight;
+                // Re-set font after canvas resize (resize clears canvas state)
+                ctx.font = 'bold 12px monospace';
             }
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -49,8 +60,8 @@ export const Hud: React.FC = () => {
             const cx = w / 2;
             const cy = h / 2;
 
-            // Opacity for cockpit elements, which fade out in chase view
-            const hudAlpha = 1.0 - viewModeTransition;
+            // Read from ref — no React re-render dependency
+            const hudAlpha = 1.0 - viewModeTransitionRef.current;
 
             // Read mutable refs directly for max speed
             const cam = renderCameraRef.current; // Use renderCamera for correct perspective
@@ -72,7 +83,6 @@ export const Hud: React.FC = () => {
                 ctx.strokeStyle = `rgba(${baseColorStr}, ${0.5 * hudAlpha})`;
                 ctx.fillStyle = `rgba(${baseColorStr}, ${0.8 * hudAlpha})`;
                 ctx.lineWidth = 2;
-                ctx.font = 'bold 12px monospace';
 
                 // --- HORIZON LINE ---
                 const fovY = Math.PI / 2; // Assume 90 deg FOV
@@ -145,13 +155,13 @@ export const Hud: React.FC = () => {
         return () => {
             cancelAnimationFrame(animationFrameId);
         };
-    }, [isHudEnabled, cameraRef, renderCameraRef, cameraVelocityRef, viewModeTransition]);
+    }, [isHudEnabled, cameraRef, renderCameraRef, cameraVelocityRef]);
 
     if (!isHudEnabled) return null;
 
     return (
-        <canvas 
-            ref={canvasRef} 
+        <canvas
+            ref={canvasRef}
             className="fixed inset-0 z-20 pointer-events-none"
         />
     );

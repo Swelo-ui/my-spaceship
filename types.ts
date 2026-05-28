@@ -42,40 +42,40 @@ export interface TerraformConfig {
 }
 
 export interface ControlConfig {
-    invertStrafe?: boolean;
-    invertForward?: boolean;
-    invertAscend?: boolean;
-    invertPitch?: boolean;
-    invertYaw?: boolean;
-    forwardVelocity?: number;
-    strafeVelocity?: number;
-    ascendVelocity?: number;
-    pitchVelocity?: number;
-    yawVelocity?: number;
+  invertStrafe?: boolean;
+  invertForward?: boolean;
+  invertAscend?: boolean;
+  invertPitch?: boolean;
+  invertYaw?: boolean;
+  forwardVelocity?: number;
+  strafeVelocity?: number;
+  ascendVelocity?: number;
+  pitchVelocity?: number;
+  yawVelocity?: number;
 }
 
 // Expanded Inputs
-export type ModulationSource = 
-    | 'speed'        // 0.0 to ~1.0+
-    | 'acceleration' // Delta speed, positive (speeding up) or negative (slowing down)
-    | 'altitude'     // Height relative to start (can be negative)
-    | 'descent'      // Downward velocity (positive when falling/diving)
-    | 'turning'      // Yaw rotation speed (absolute value, 0.0 to ~1.0)
-    | 'turningSigned' // Yaw rotation speed with direction (Negative = Left, Positive = Right)
-    | 'heading'      // Compass direction (0.0 to 1.0)
-    | 'pitch'        // Camera look up/down angle (-1.0 looking down, +1.0 looking up)
-    | 'proximity'    // Closeness to obstacles (0.0 safe, 1.0 collision)
-    | 'time';        // Always increasing seconds
+export type ModulationSource =
+  | 'speed'        // 0.0 to ~1.0+
+  | 'acceleration' // Delta speed, positive (speeding up) or negative (slowing down)
+  | 'altitude'     // Height relative to start (can be negative)
+  | 'descent'      // Downward velocity (positive when falling/diving)
+  | 'turning'      // Yaw rotation speed (absolute value, 0.0 to ~1.0)
+  | 'turningSigned' // Yaw rotation speed with direction (Negative = Left, Positive = Right)
+  | 'heading'      // Compass direction (0.0 to 1.0)
+  | 'pitch'        // Camera look up/down angle (-1.0 looking down, +1.0 looking up)
+  | 'proximity'    // Closeness to obstacles (0.0 safe, 1.0 collision)
+  | 'time';        // Always increasing seconds
 
 // Expanded Outputs
 export type ModulationTarget =
-    | 'masterVolume'
-    | 'drone.gain' | 'drone.filter' | 'drone.pitch'
-    | 'atmosphere.gain'
-    | 'arp.gain' | 'arp.speed' | 'arp.filter' | 'arp.octaves' | 'arp.direction'
-    | 'rhythm.gain' | 'rhythm.filter' | 'rhythm.bpm'
-    | 'melody.gain' | 'melody.density'
-    | 'reverb.mix' | 'reverb.tone';
+  | 'masterVolume'
+  | 'drone.gain' | 'drone.filter' | 'drone.pitch'
+  | 'atmosphere.gain'
+  | 'arp.gain' | 'arp.speed' | 'arp.filter' | 'arp.octaves' | 'arp.direction'
+  | 'rhythm.gain' | 'rhythm.filter' | 'rhythm.bpm'
+  | 'melody.gain' | 'melody.density'
+  | 'reverb.mix' | 'reverb.tone';
 
 export interface Modulation {
   id: string;
@@ -93,19 +93,19 @@ export interface ReverbConfig {
 }
 
 export interface ArpConfig {
-    enabled: boolean;
-    gain: number;
-    speed: number; // 0.1 to 2.0 factor
-    octaves: 1 | 2 | 3;
-    filter: number; // Base filter cutoff
-    direction: 'up' | 'down' | 'updown' | 'random';
+  enabled: boolean;
+  gain: number;
+  speed: number; // 0.1 to 2.0 factor
+  octaves: 1 | 2 | 3;
+  filter: number; // Base filter cutoff
+  direction: 'up' | 'down' | 'updown' | 'random';
 }
 
 export interface RhythmConfig {
-    enabled: boolean;
-    gain: number;
-    bpm: number;
-    filter: number; // Base filter cutoff
+  enabled: boolean;
+  gain: number;
+  bpm: number;
+  filter: number; // Base filter cutoff
 }
 
 export interface SoundConfig {
@@ -113,21 +113,21 @@ export interface SoundConfig {
   masterVolume: number;
   reverb: ReverbConfig;
   drone: { // Deep bass foundation
-      enabled: boolean;
-      gain: number;
-      filter: number; // Lowpass cutoff
-      pitch: number; // Semitone offset
+    enabled: boolean;
+    gain: number;
+    filter: number; // Lowpass cutoff
+    pitch: number; // Semitone offset
   };
   atmosphere: { // Texture layer (rain/wind)
-      enabled: boolean;
-      gain: number;
-      texture: 'smooth' | 'grit';
+    enabled: boolean;
+    gain: number;
+    texture: 'smooth' | 'grit';
   };
   melody: { // Generative CS-80 style leads
-      enabled: boolean;
-      gain: number;
-      density: number; // How often notes play
-      scale: 'dorian' | 'phrygian' | 'lydian';
+    enabled: boolean;
+    gain: number;
+    density: number; // How often notes play
+    scale: 'dorian' | 'phrygian' | 'lydian';
   };
   arp: ArpConfig;
   rhythm: RhythmConfig;
@@ -135,50 +135,105 @@ export interface SoundConfig {
 }
 
 export interface CameraData {
-    position: [number, number, number];
-    rotation: [number, number];
-    roll: number;
+  position: [number, number, number];
+  rotation: [number, number];
+  roll: number;
 }
 
 export type ViewMode = 'cockpit' | 'chase';
 
-export type ShipModulationTarget = 
-    | 'complexity' 
-    | 'fold1' | 'fold2' | 'fold3' 
-    | 'scale' | 'stretch' | 'taper' | 'twist'
-    | 'asymmetryX' | 'asymmetryY' | 'asymmetryZ'
-    | 'twistAsymX' | 'scaleAsymX' | 'fold1AsymX' | 'fold2AsymX';
+export type ShipModulationTarget =
+  | 'complexity'
+  | 'fold1' | 'fold2' | 'fold3'
+  | 'scale' | 'stretch' | 'taper' | 'twist'
+  | 'asymmetryX' | 'asymmetryY' | 'asymmetryZ'
+  | 'twistAsymX' | 'scaleAsymX' | 'fold1AsymX' | 'fold2AsymX';
 
 export interface ShipModulation {
-    id: string;
-    enabled: boolean;
-    source: ModulationSource;
-    target: ShipModulationTarget;
-    amount: number;
+  id: string;
+  enabled: boolean;
+  source: ModulationSource;
+  target: ShipModulationTarget;
+  amount: number;
 }
 
 export interface ShipConfig {
-    complexity: number; // Iterations
-    fold1: number;
-    fold2: number;
-    fold3: number;
-    scale: number;
-    stretch: number;
-    taper: number;
-    twist: number;
-    asymmetryX: number; // Left/Right Bias
-    asymmetryY: number; // Up/Down Bias
-    asymmetryZ: number; // Front/Back Bias
-    // New Parameter Biases
-    twistAsymX: number;
-    scaleAsymX: number;
-    fold1AsymX: number;
-    fold2AsymX: number;
-    
-    chaseDistance?: number;
-    chaseVerticalOffset?: number;
-    pitchOffset?: number;
-    generalScale?: number;
-    translucency?: number;
-    modulations: ShipModulation[];
+  complexity: number; // Iterations
+  fold1: number;
+  fold2: number;
+  fold3: number;
+  scale: number;
+  stretch: number;
+  taper: number;
+  twist: number;
+  asymmetryX: number; // Left/Right Bias
+  asymmetryY: number; // Up/Down Bias
+  asymmetryZ: number; // Front/Back Bias
+  // New Parameter Biases
+  twistAsymX: number;
+  scaleAsymX: number;
+  fold1AsymX: number;
+  fold2AsymX: number;
+
+  chaseDistance?: number;
+  chaseVerticalOffset?: number;
+  pitchOffset?: number;
+  generalScale?: number;
+  translucency?: number;
+  modulations: ShipModulation[];
+}
+
+// ============================================================
+// COMBAT SYSTEM TYPES
+// ============================================================
+
+export type EnemyState = 'patrol' | 'chase' | 'attack' | 'evade' | 'dying' | 'dead';
+
+export interface Enemy {
+  id: string;
+  position: [number, number, number];
+  velocity: [number, number, number];
+  rotation: [number, number];   // [pitch, yaw]
+  roll: number;
+  health: number;
+  maxHealth: number;
+  shields: number;
+  maxShields: number;
+  shieldRechargeTimer: number;
+  state: EnemyState;
+  stateTimer: number;           // time in current state
+  fireTimer: number;            // countdown to next shot
+  fireCooldown: number;         // seconds between shots
+  hitFlashTimer: number;        // visual hit flash
+  deathTimer: number;           // explosion animation timer
+  // Shape variant (different fold params for visual variety)
+  shapeVariant: number;         // 0, 1, 2 — different enemy types
+}
+
+export interface Projectile {
+  id: string;
+  position: [number, number, number];
+  velocity: [number, number, number];
+  lifetime: number;             // seconds remaining
+  isPlayerShot: boolean;        // true = player fired, false = enemy fired
+  damage: number;
+}
+
+export interface CombatState {
+  enemies: Enemy[];
+  projectiles: Projectile[];
+  playerHealth: number;
+  playerMaxHealth: number;
+  playerShields: number;
+  playerMaxShields: number;
+  playerShieldRechargeTimer: number;
+  score: number;
+  wave: number;
+  waveTimer: number;            // countdown to next wave spawn
+  isGameOver: boolean;
+  ammo: number;
+  maxAmmo: number;
+  ammoRechargeTimer: number;
+  lastHitTime: number;          // for screen flash effect
+  killCount: number;
 }

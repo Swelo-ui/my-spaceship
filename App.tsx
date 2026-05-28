@@ -11,8 +11,12 @@ import { ControlsPanel } from './components/ControlsPanel';
 import { DpadControls } from './components/DpadControls';
 import { Hud } from './components/Hud';
 import { ShipOverlay } from './components/ShipOverlay';
+import { EnemyOverlay } from './components/EnemyOverlay';
+import { ProjectileOverlay } from './components/ProjectileOverlay';
+import { CombatHud } from './components/CombatHud';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { useAppStoreComplete } from './hooks/useAppStore';
+import { useCombatSystem } from './hooks/useCombatSystem';
 import { GearIcon, SpeakerWaveIcon, SpeakerXMarkIcon, RocketLaunchIcon } from './components/Icons';
 import { SHOW_SETTINGS_BUTTON, SHOW_SHARE_BUTTON, SHOW_HUD_BUTTON, SHOW_MUTE_BUTTON } from './config';
 
@@ -27,7 +31,10 @@ const AppContent: React.FC = () => {
         currentSessionId,
         activeShaderCode,
         allUniforms,
-        renderCameraRef, // Use renderCameraRef for offset support
+        renderCameraRef,
+        cameraRef,
+        cameraVelocityRef,
+        keysPressed,
         cameraControlsEnabled,
         setIsControlsOpen,
         isHdEnabled,
@@ -45,6 +52,9 @@ const AppContent: React.FC = () => {
         soundConfig,
         handleSoundConfigChange,
     } = useAppContext();
+
+    // Combat system — initialized here so it has access to camera refs
+    const combatAPI = useCombatSystem(cameraRef, cameraVelocityRef, keysPressed);
 
     const [isLinkCopied, setIsLinkCopied] = useState(false);
 
@@ -64,7 +74,7 @@ const AppContent: React.FC = () => {
         const hashString = Object.entries(params)
             .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
             .join('&');
-        
+
         const url = `${window.location.origin}${window.location.pathname}#${hashString}`;
 
         navigator.clipboard.writeText(url).then(() => {
@@ -80,7 +90,7 @@ const AppContent: React.FC = () => {
     // Binary Volume Toggle
     const handleVolumeToggle = useCallback(() => {
         if (!soundConfig.enabled) {
-             // Off -> On
+            // Off -> On
             handleSoundConfigChange('enabled', true);
             handleSoundConfigChange('masterVolume', 0.5);
         } else {
@@ -137,7 +147,7 @@ const AppContent: React.FC = () => {
 
     return (
         <div className="h-screen w-screen bg-gray-900 text-white flex flex-col overflow-hidden relative">
-             {/* Hidden input for file importing */}
+            {/* Hidden input for file importing */}
             <input
                 type="file"
                 ref={fileInputRef}
@@ -145,7 +155,7 @@ const AppContent: React.FC = () => {
                 className="hidden"
                 accept=".json"
             />
-            
+
             <main className={`flex-grow bg-black flex items-center justify-center overflow-hidden`}>
                 <div
                     className="relative"
@@ -157,7 +167,7 @@ const AppContent: React.FC = () => {
                             fragmentSrc={activeShaderCode}
                             onError={handleShaderError}
                             uniforms={allUniforms}
-                            cameraRef={renderCameraRef} // Use the render-specific camera ref
+                            cameraRef={renderCameraRef}
                             isHdEnabled={isHdEnabled}
                             isFpsEnabled={isFpsEnabled}
                             isPlaying={true}
@@ -167,12 +177,35 @@ const AppContent: React.FC = () => {
                     <ShipOverlay />
                 </div>
             </main>
-            
+
+            {/* Enemy ships — fixed overlay, does NOT cover ShaderCanvas */}
+            <EnemyOverlay combatStateRef={combatAPI.combatStateRef} />
             <Hud />
-            
+            {/* Laser projectiles */}
+            <ProjectileOverlay combatStateRef={combatAPI.combatStateRef} />
+            {/* Combat HUD: health, shields, ammo, enemy markers */}
+            <CombatHud combatStateRef={combatAPI.combatStateRef} onRestart={combatAPI.resetCombat} />
+
             <ControlsPanel />
             {cameraControlsEnabled && <DpadControls />}
-            
+
+            {/* Fire button — bottom center, always visible */}
+            {cameraControlsEnabled && (
+                <button
+                    onPointerDown={(e) => { e.preventDefault(); combatAPI.firePlayerLaser(); }}
+                    className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 w-16 h-16 rounded-full flex items-center justify-center select-none touch-none"
+                    style={{
+                        background: 'radial-gradient(circle, rgba(0,200,255,0.9) 0%, rgba(0,80,180,0.7) 100%)',
+                        border: '2px solid rgba(0,220,255,0.8)',
+                        boxShadow: '0 0 20px rgba(0,200,255,0.6), inset 0 0 10px rgba(0,150,255,0.3)',
+                    }}
+                    aria-label="Fire laser"
+                    title="Fire (F key)"
+                >
+                    <span style={{ fontSize: 28, lineHeight: 1 }}>🔫</span>
+                </button>
+            )}
+
             {/* Top Left Buttons Group: HD & Ship */}
             <div className="fixed top-4 left-4 z-30 flex flex-col gap-2">
                 <button
@@ -184,8 +217,8 @@ const AppContent: React.FC = () => {
                 >
                     <span className="font-bold text-sm">HD</span>
                 </button>
-                
-                 {cameraControlsEnabled && SHOW_HUD_BUTTON && (
+
+                {cameraControlsEnabled && SHOW_HUD_BUTTON && (
                     <button
                         onClick={toggleViewMode}
                         className={`w-12 h-12 flex items-center justify-center rounded-full transition-all transform hover:scale-110 shadow-lg border backdrop-blur-sm
@@ -193,7 +226,7 @@ const AppContent: React.FC = () => {
                         aria-label={`Toggle View Mode (Current: ${viewMode})`}
                         title={viewMode === 'chase' ? "Switch to Cockpit View" : "Switch to Chase View"}
                     >
-                       <RocketLaunchIcon className="w-6 h-6" />
+                        <RocketLaunchIcon className="w-6 h-6" />
                     </button>
                 )}
             </div>
@@ -234,7 +267,7 @@ const AppContent: React.FC = () => {
                             <span className="material-symbols-outlined">share</span>
                         </button>
                         {isLinkCopied && (
-                            <div 
+                            <div
                                 className="absolute right-full mr-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-white/90 backdrop-blur-sm text-black text-xs font-semibold rounded-full shadow-lg whitespace-nowrap border border-gray-300"
                                 aria-live="polite"
                             >
